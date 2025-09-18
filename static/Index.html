@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FHIRGuard Prototype</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f3f4f6;
+        }
+    </style>
+</head>
+<body class="flex items-center justify-center min-h-screen p-4 md:p-8">
+    <div class="bg-white rounded-xl shadow-lg w-full max-w-4xl p-6 md:p-10 border border-gray-200">
+        <!-- Header -->
+        <div class="text-center mb-8">
+            <h1 class="text-3xl md:text-4xl font-bold text-gray-800">FHIRGuard</h1>
+            <p class="mt-2 text-gray-500">Self-Healing Clinical Data with Neuro-Symbolic AI</p>
+        </div>
+
+        <!-- File Upload Section -->
+        <div class="flex flex-col items-center justify-center border-2 border-dashed border-blue-400 rounded-xl p-6 md:p-8 mb-8 bg-blue-50">
+            <svg class="w-12 h-12 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v7"></path>
+            </svg>
+            <p class="mt-4 text-gray-600">Drag and drop your FHIR JSON, NDJSON, or ZIP file here, or click to browse.</p>
+            <input type="file" id="fhirFileInput" class="hidden" accept=".json,.ndjson,.zip,application/zip">
+            <button id="uploadButton" class="mt-4 px-6 py-3 bg-blue-600 text-white font-semibold rounded-lg shadow-md hover:bg-blue-700 transition-colors">
+                Upload FHIR File
+            </button>
+        </div>
+
+        <!-- Loading Indicator -->
+        <div id="loadingIndicator" class="hidden text-center mb-6">
+            <div class="flex items-center justify-center space-x-2">
+                <div class="w-4 h-4 rounded-full animate-pulse bg-blue-600"></div>
+                <div class="w-4 h-4 rounded-full animate-pulse bg-blue-600"></div>
+                <div class="w-4 h-4 rounded-full animate-pulse bg-blue-600"></div>
+            </div>
+            <p class="mt-2 text-gray-500">Analyzing FHIR data...</p>
+        </div>
+        
+        <!-- Success Message -->
+        <div id="successMessage" class="hidden fixed inset-0 bg-gray-600 bg-opacity-50 items-center justify-center p-4">
+            <div class="bg-white rounded-xl shadow-2xl max-w-sm w-full p-6 text-center">
+                <p class="text-lg font-semibold text-green-600">Fix Approved (Simulated)!</p>
+                <p class="mt-2 text-gray-700">The data correction has been applied.</p>
+            </div>
+        </div>
+
+        <!-- Validation Results Section -->
+        <div id="resultsSection" class="hidden">
+            <h2 class="text-2xl font-semibold text-gray-800 mb-4">Validation Report</h2>
+            <div id="issueTableContainer" class="bg-gray-100 rounded-lg p-4 overflow-x-auto shadow-inner">
+                <table class="min-w-full divide-y divide-gray-200">
+                    <thead class="bg-gray-200">
+                        <tr>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider">Issue</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider">Type</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider">Severity</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider">Action</th>
+                        </tr>
+                    </thead>
+                    <tbody id="issueTableBody" class="bg-white divide-y divide-gray-200">
+                        <!-- Issue rows will be inserted here by JavaScript -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Modal for Detailed Explanation -->
+        <div id="explanationModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 hidden items-center justify-center p-4">
+            <div class="bg-white rounded-xl shadow-2xl max-w-lg w-full p-6 md:p-8 relative">
+                <button id="closeModalButton" class="absolute top-4 right-4 text-gray-400 hover:text-gray-600 transition-colors">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                </button>
+                <h3 id="modalTitle" class="text-xl font-bold text-gray-800 mb-4">Detailed Explanation</h3>
+                <p id="modalExplanation" class="text-gray-700 leading-relaxed mb-6"></p>
+                <div id="repairSection" class="hidden">
+                    <h4 class="font-semibold text-gray-800 mb-2">Suggested Repair (JSON Patch)</h4>
+                    <pre id="repairCode" class="bg-gray-100 rounded-lg p-4 overflow-x-auto text-sm text-gray-800 font-mono"></pre>
+                    <div class="mt-4 flex space-x-2">
+                        <button id="approveRepair" class="px-4 py-2 bg-green-500 text-white text-sm font-semibold rounded-lg hover:bg-green-600 transition-colors">Approve Fix</button>
+                        <button id="rejectRepair" class="px-4 py-2 bg-red-500 text-white text-sm font-semibold rounded-lg hover:bg-red-600 transition-colors">Reject Fix</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // JavaScript for FHIRGuard Prototype
+        
+        // --- DOM Elements ---
+        const uploadButton = document.getElementById('uploadButton');
+        const fhirFileInput = document.getElementById('fhirFileInput');
+        const loadingIndicator = document.getElementById('loadingIndicator');
+        const resultsSection = document.getElementById('resultsSection');
+        const issueTableBody = document.getElementById('issueTableBody');
+        const explanationModal = document.getElementById('explanationModal');
+        const closeModalButton = document.getElementById('closeModalButton');
+        const modalTitle = document.getElementById('modalTitle');
+        const modalExplanation = document.getElementById('modalExplanation');
+        const repairSection = document.getElementById('repairSection');
+        const repairCode = document.getElementById('repairCode');
+        const approveRepair = document.getElementById('approveRepair');
+        const rejectRepair = document.getElementById('rejectRepair');
+        const successMessage = document.getElementById('successMessage');
+        
+        // --- Event Listeners ---
+        uploadButton.addEventListener('click', () => fhirFileInput.click());
+        fhirFileInput.addEventListener('change', handleFileSelect);
+        closeModalButton.addEventListener('click', () => explanationModal.classList.add('hidden'));
+
+        // --- Core Functions ---
+        async function handleFileSelect(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            loadingIndicator.classList.remove('hidden');
+            resultsSection.classList.add('hidden');
+            issueTableBody.innerHTML = ''; // Clear previous results
+
+            try {
+                const formData = new FormData();
+                formData.append("file", file);
+
+                const response = await fetch("http://127.0.0.1:8000/validate-fhir", {
+                    method: "POST",
+                    body: formData,
+                });
+
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(errorData.detail || "Server error");
+                }
+
+                const data = await response.json();
+                
+                if (data && data.reports) {
+                    displayResults(data.reports);
+                } else {
+                    displayError("Validation Error", "The server returned an invalid report format.");
+                }
+            } catch (error) {
+                if (error instanceof TypeError && error.message.includes('Failed to fetch')) {
+                    displayError("Network Error", "Could not connect to the backend server. Please ensure the server is running on http://127.0.0.1:8000.");
+                } else {
+                    displayError("Processing Error", error.message);
+                }
+            } finally {
+                loadingIndicator.classList.add('hidden');
+            }
+        }
+
+        function displayResults(reports) {
+            resultsSection.classList.remove('hidden');
+            
+            const allIssues = reports.flatMap(report => report.issues);
+
+            if (allIssues.length === 0) {
+                const row = document.createElement('tr');
+                row.innerHTML = `<td colspan="4" class="px-6 py-4 text-center text-gray-500">No issues found. The data appears to be valid.</td>`;
+                issueTableBody.appendChild(row);
+                return;
+            }
+
+            allIssues.forEach(issue => {
+                const row = document.createElement('tr');
+                row.className = 'hover:bg-gray-50 transition-colors';
+                row.innerHTML = `
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">${issue.title}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${issue.type}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                        <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${getSeverityColor(issue.severity)}">
+                            ${issue.severity}
+                        </span>
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                        <button class="text-blue-600 hover:text-blue-900 transition-colors" data-issue-id="${issue.id}">
+                            View Details
+                        </button>
+                    </td>
+                `;
+                issueTableBody.appendChild(row);
+                
+                // Add event listener to the View Details button
+                row.querySelector('button').addEventListener('click', () => showExplanation(issue));
+            });
+        }
+        
+        function getSeverityColor(severity) {
+            switch (severity.toLowerCase()) {
+                case 'high': return 'bg-red-100 text-red-800';
+                case 'medium': return 'bg-yellow-100 text-yellow-800';
+                case 'low': return 'bg-gray-100 text-gray-800';
+                default: return 'bg-gray-100 text-gray-800';
+            }
+        }
+
+        function showExplanation(issue) {
+            modalTitle.textContent = issue.title;
+            modalExplanation.textContent = issue.explanation;
+            
+            if (issue.isRepairable) {
+                repairSection.classList.remove('hidden');
+                repairCode.textContent = JSON.stringify(issue.repair, null, 2);
+                
+                approveRepair.onclick = () => {
+                    console.log(`Fix for issue ID ${issue.id} approved.`);
+                    explanationModal.classList.add('hidden');
+                    successMessage.classList.remove('hidden');
+                    setTimeout(() => {
+                        successMessage.classList.add('hidden');
+                    }, 3000);
+                };
+                rejectRepair.onclick = () => {
+                    console.log(`Fix for issue ID ${issue.id} rejected.`);
+                    alert(`Fix for issue "${issue.title}" has been rejected (simulated).`);
+                    explanationModal.classList.add('hidden');
+                };
+            } else {
+                repairSection.classList.add('hidden');
+            }
+            
+            explanationModal.classList.remove('hidden');
+        }
+
+        function displayError(title, message) {
+            loadingIndicator.classList.add('hidden');
+            resultsSection.classList.add('hidden');
+            // Use a custom modal or a simple message for errors
+            alert(`${title}:\n${message}`);
+        }
+    </script>
+</body>
+</html>

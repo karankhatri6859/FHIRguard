@@ -1,0 +1,16 @@
+2025-09-11 14:03:58 - FHIRGuard - INFO - Loading master FHIR schema from: C:\Users\lalit\OneDrive\Desktop\FHIRGuard\schemas\fhir.schema.json
+2025-09-11 14:03:58 - FHIRGuard - ERROR - Loaded schema file, but it contains 0 resource definitions in its '$defs' section. The file may be incorrect or incomplete.
+2025-09-11 14:08:05 - FHIRGuard - INFO - Loading master FHIR schema from: C:\Users\lalit\OneDrive\Desktop\FHIRGuard\schemas\fhir.schema.json
+2025-09-11 14:08:05 - FHIRGuard - ERROR - Loaded schema file, but it contains 0 resource definitions in its '$defs' section. The file may be incorrect or incomplete.
+2025-09-11 14:31:52 - FHIRGuard - INFO - Loading master FHIR schema from: C:\Users\lalit\OneDrive\Desktop\FHIRGuard\schemas\fhir.schema.json
+2025-09-11 14:31:52 - FHIRGuard - ERROR - Loaded schema file, but it contains 0 resource definitions in its '$defs' section. The file may be incorrect or incomplete.
+2025-09-11 14:40:05 - FHIRGuard - INFO - Loading master FHIR schema from: C:\Users\lalit\OneDrive\Desktop\FHIRGuard\schemas\fhir.schema.json
+2025-09-11 14:40:05 - FHIRGuard - ERROR - Loaded schema file, but it contains 0 resource definitions in its '$defs' section. The file may be incorrect or incomplete.
+2025-09-11 14:44:42 - FHIRGuard - INFO - Received request to validate file: valid_patient.json (Content-Type: application/json)
+2025-09-11 14:48:07 - FHIRGuard - INFO - Received request to validate file: repairable_patient.json (Content-Type: application/json)
+2025-09-11 14:48:09 - FHIRGuard - INFO - Received request to validate file: anomaly_observation.json (Content-Type: application/json)
+2025-09-11 14:52:58 - FHIRGuard - INFO - Loading master FHIR schema from: C:\Users\lalit\OneDrive\Desktop\FHIRGuard\schemas\fhir.schema.json
+2025-09-11 14:52:58 - FHIRGuard - ERROR - Loaded schema file, but it contains 0 resource definitions in its '$defs' section. The file may be incorrect or incomplete.
+2025-09-11 14:53:20 - FHIRGuard - INFO - Received request to validate file: valid_patient.json (Content-Type: application/json)
+2025-09-11 14:55:49 - FHIRGuard - INFO - Loading master FHIR schema from: C:\Users\lalit\OneDrive\Desktop\FHIRGuard\schemas\fhir.schema.json
+2025-09-11 14:55:49 - FHIRGuard - ERROR - Loaded schema file, but it contains 0 resource definitions in its '$defs' section. The file may be incorrect or incomplete.
