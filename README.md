@@ -1,212 +1,149 @@
 FHIRGuard: Advanced Healthcare Data Validation & Clinical Anomaly Detection
 
-FHIRGuard is an enterprise-grade validation engine designed to ensure the structural integrity, semantic correctness, and clinical plausibility of healthcare data. Unlike standard validators, FHIRGuard employs a multi-layered defense strategy that combines official HL7 Java validation, Machine Learning for physiological anomaly detection, and Generative AI for automated clinical summaries.
+Enterprise-grade validation engine ensuring structural integrity, semantic correctness, and clinical plausibility of healthcare data.
 
 🧠 System Architecture
 
-The system uses a non-blocking, microservices-inspired architecture to handle complex validation tasks without compromising user experience.
+FHIRGuard employs a multi-layered defense strategy combining official HL7 Java validation, Machine Learning for anomaly detection, and Generative AI for automated clinical summaries.
 
-Frontend: A responsive Dashboard (Index.html) for file uploads and real-time visualization.
+graph TD
+    Client[User / Dashboard] -->|Upload Bundle| API[FastAPI Gateway]
+    API -->|Async Task| Redis[Redis Queue]
+    Redis -->|Process| Worker[Celery Worker]
+    
+    subgraph "Validation Core"
+    Worker -->|Layer 1| Schema[JSON Schema]
+    Worker -->|Layer 2| Java[HL7 Java Validator]
+    Worker -->|Layer 3| ML[Isolation Forest (ML)]
+    Worker -->|Layer 4| AI[Ollama / MedGemma]
+    end
+    
+    ML -->|Detect| Anomalies[Clinical Outliers]
+    AI -->|Generate| Narrative[Clinical Summary]
 
-API Gateway: FastAPI handles requests and offloads heavy processing to a task queue.
 
-Task Engine: Celery & Redis manage asynchronous validation pipelines.
+🚀 Quick Start Guide
 
-Validation Core (The 4 Layers):
+1. Prerequisites
 
-Layer 1 (Syntax): JSON Schema validation.
-
-Layer 2 (Semantics): Official HL7 Java Validator (with US Core & IPS profiles).
-
-Layer 3 (Clinical Logic): NEWS2 (National Early Warning Score) calculation and hard-coded medical rules.
-
-Layer 4 (AI & ML):
-
-Isolation Forest for statistical outlier detection in vitals.
-
-MedGemma LLM (Ollama) for generating human-readable clinical narratives.
-
-🛠️ Prerequisites
-
-Before running the system, ensure you have the following installed:
+Ensure you have the following installed:
 
 Python 3.11+
 
-Java JDK 11+ (Required for the Validator Service)
+Java JDK 11+ (Critical for the Validator)
 
-Redis Server (Message Broker for Celery)
+Redis Server
 
-Ollama (For the AI Agent)
+Ollama (Pull model: ollama pull alibayram/medgemma:4b)
 
-Required Model: alibayram/medgemma:4b
+2. Installation
 
-⚙️ Installation Guide
-
-1. Clone the Repository
-
+# Clone the repository
 git clone [https://github.com/karankhatri6859/FHIRguard.git](https://github.com/karankhatri6859/FHIRguard.git)
 cd FHIRguard
 
-
-2. Set Up Virtual Environment
-
-# Windows
+# Setup Virtual Environment
 python -m venv venv
-venv\Scripts\activate
+source venv/bin/activate  # Windows: venv\Scripts\activate
 
-# Mac/Linux
-python3 -m venv venv
-source venv/bin/activate
-
-
-3. Install Python Dependencies
-
+# Install Dependencies
 pip install -r requirements.txt
 
 
-🏗️ Critical Setup: Restoring Missing Assets
+3. Restore Missing Assets
 
-To keep the repository lightweight, large models and binaries are not tracked in Git. You must generate or download them manually.
+Large files are excluded from the repository. You must generate or download them:
 
-Step A: Generate the ML Model
+Generate ML Model: python train_comprehensive.py
 
-Run the training script to generate the anomaly detection model (comprehensive_model.joblib).
+Download Validator: Place validator-wrapper.jar in the validator/ folder.
 
-python train_comprehensive.py
+🖥️ Running the Distributed System
 
+This system requires 5 separate terminals to run all microservices.
 
-Step B: Prepare the Java Validator
+Terminal
 
-Download the HL7 Validator Wrapper JAR.
+Component
 
-Place it inside the validator/ folder.
+Command
 
-Rename it to: validator-wrapper.jar.
+1
 
-Step C: Pull the AI Model
-
-Ensure Ollama is installed, then pull the specific medical model used by the worker:
-
-ollama pull alibayram/medgemma:4b
-
-
-🚀 Running the System (The 5-Terminal Setup)
-
-Since this is a distributed system, you need to run the components in separate terminals.
-
-Terminal 1: Redis Server
-
-Start the message broker.
+Redis
 
 redis-server
 
+2
 
-Terminal 2: Java Validation Server
+Java Validator
 
-Start the validation engine with the required Implementation Guides (IGs).
+java -Xmx6g -jar validator/validator-wrapper.jar -port 8082 -ig hl7.fhir.us.core -ig hl7.fhir.uv.ips ...
 
-cd validator
-java -Xmx6g -jar validator-wrapper.jar -port 8082 -ig hl7.fhir.us.core -ig hl7.fhir.uv.ips -ig hl7.fhir.uv.sdc -ig hl7.cda.us.ccda -ig hl7.fhir.us.carin-bb
+3
 
-
-Note: -Xmx6g allocates 6GB of RAM to Java. Ensure your machine has enough memory.
-
-Terminal 3: AI Inference Engine (Ollama)
-
-Start the local LLM server.
+AI Engine
 
 ollama serve
 
+4
 
-Terminal 4: Celery Worker
+Celery Worker
 
-Start the background task processor.
-
-# Windows
 celery -A celery_worker worker --loglevel=info --pool=solo
 
-# Mac/Linux
-celery -A celery_worker worker --loglevel=info
+5
 
-
-Terminal 5: Main Backend API
-
-Start the FastAPI server using the runner script.
+API Server
 
 python run.py
 
+Note: The Java Validator command requires -ig flags for specific Implementation Guides (US Core, IPS, etc.). See full command in validator/README.txt if available.
 
-The application will be available at https://www.google.com/search?q=http://127.0.0.1:8000
-
-🕵️‍♂️ Usage & Features
+🕵️‍♂️ Features & Capabilities
 
 1. The Dashboard
 
-Open https://www.google.com/search?q=http://127.0.0.1:8000 in your browser.
+Access at: http://127.0.0.1:8000
 
-Drag & Drop: Upload FHIR JSON bundles (or ZIP files containing them).
+Drag & Drop UI: Upload .json, .ndjson, or .zip files.
 
-Real-time Progress: Watch the validation steps (Parsing -> Java -> ML -> AI).
+Real-time Status: Live progress tracking via WebSockets/Polling.
 
-Interactive Report:
+2. AI Clinical Narrative
 
-AI Narrative: A generated patient story and clinical handoff (SBAR format).
+The system uses MedGemma-4b to generate a structured report:
 
-Visual Charts: Breakdown of error severity and resource types.
+Patient Story: Summarizes history and vitals.
 
-Issue Cards: Detailed error logs categorized by their source (Java Validator vs. ML Anomaly).
+Clinical Handoff: SBAR format for doctors.
 
-2. Diagnostic Check
+Audit & Coding: Flags for billing and compliance.
 
-If something isn't working, run the self-diagnostic tool to check ports and files:
+3. Validation Layers
 
-python check_env.py
+✅ Syntactic: JSON Schema validation.
 
+✅ Semantic: Official HL7 Java Validator (Profile conformance).
+
+✅ Clinical: NEWS2 Score calculation & Rule-based alerts.
+
+✅ Statistical: ML Isolation Forest for detecting vitals anomalies.
 
 📂 Project Structure
 
-Folder/File
+FHIRGuard/
+├── api/                 # FastAPI Endpoints
+├── core/                # Config & Logging
+├── models/              # ML Model Logic
+├── services/            # Connectors (Java, AI)
+├── static/              # Frontend (HTML/JS/CSS)
+├── validator/           # Java Validator JAR
+├── celery_worker.py     # Async Task Logic
+├── train_comprehensive.py # ML Training Script
+└── main.py              # App Entry Point
 
-Description
 
-api/
+📜 License
 
-FastAPI route definitions and endpoints.
-
-core/
-
-Configuration files (Logging, Settings).
-
-models/
-
-Logic for the Isolation Forest ML model.
-
-services/
-
-Connectors for the Java Validator and AI Agent.
-
-static/
-
-Frontend assets (Index.html, CSS, JS).
-
-validator/
-
-Directory for the Java JAR file.
-
-celery_worker.py
-
-The main async processing logic and NEWS2 rules.
-
-train_comprehensive.py
-
-Script to train and save the .joblib model.
-
-📜 License & Credits
-
-Developed as a Final Year B.Tech Project.
-
-Author: Karan Khatri
-
-Frameworks: FastAPI, Celery, Scikit-Learn
-
-Standards: HL7 FHIR R4
+Final Year B.Tech Project | Developed by Karan Khatri
