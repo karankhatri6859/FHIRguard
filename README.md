@@ -146,4 +146,4 @@ FHIRGuard/
 
 📜 License
 
-Final Year B.Tech Project | Developed by Karan Khatri
+Developed by Karan Khatri
