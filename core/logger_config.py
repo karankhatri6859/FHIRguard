@@ -4,7 +4,7 @@ import sys
 def setup_logger():
     """Sets up a configured logger for the application."""
     logger = logging.getLogger("FHIRGuard")
-    logger.setLevel(logging.INFO)
+    logger.setLevel(logging.INFO)  # <-- FIX: Set back to INFO
 
     # Prevent adding duplicate handlers if this function is called multiple times
     if logger.hasHandlers():

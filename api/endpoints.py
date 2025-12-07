@@ -1,111 +1,69 @@
-import json
-import io
-import zipfile
 from fastapi import APIRouter, UploadFile, File, HTTPException
-from services.validation_service import ValidationService
-from core.logger_config import logger
-from typing import Dict, Any
+from celery.result import AsyncResult
+from celery_worker import process_uploaded_file_task
 
 router = APIRouter()
-validation_service = ValidationService()
 
-def process_fhir_resource(fhir_data: Dict[str, Any], source_name: str) -> list:
+@router.post("/upload")
+async def upload_file(file: UploadFile = File(...)):
     """
-    Helper function to process a single resource or unpack a Bundle.
-    It returns a list of validation reports.
+    Receives file, starts Async task, returns Task ID immediately.
     """
-    all_reports = []
+    # 1. Basic File Type Check
+    if not file.filename.endswith(('.json', '.ndjson', '.zip')):
+        raise HTTPException(status_code=400, detail="Invalid file type. Please upload .json, .ndjson, or .zip")
     
-    # Check if the resource is a Bundle
-    if fhir_data.get("resourceType") == "Bundle":
-        logger.info(f"Processing a Bundle from '{source_name}'.")
-        # Loop through each entry in the Bundle
-        for i, entry in enumerate(fhir_data.get("entry", [])):
-            resource = entry.get("resource")
-            if resource:
-                report = validation_service.validate_and_analyze(resource)
-                resource_id = resource.get("id", f"entry-{i+1}")
-                resource_type = resource.get("resourceType", "Unknown")
-                all_reports.append({"resource": f"{source_name} -> {resource_type}/{resource_id}", "issues": report})
-    else:
-        # Process as a single resource
-        report = validation_service.validate_and_analyze(fhir_data)
-        all_reports.append({"resource": source_name, "issues": report})
-        
-    return all_reports
-
-
-@router.post("/validate-fhir")
-async def validate_fhir(file: UploadFile = File(...)):
-    logger.info(f"Received request to validate file: {file.filename} (Content-Type: {file.content_type})")
-    final_reports = []
+    # 2. Read content
+    content = await file.read()
     
-    if file.filename.endswith('.zip'):
-        try:
-            zip_content = await file.read()
-            with zipfile.ZipFile(io.BytesIO(zip_content), 'r') as z:
-                # Look for both .json and .ndjson files
-                files_to_process = [f for f in z.infolist() if f.filename.endswith(('.json', '.ndjson')) and not f.is_dir()]
-                logger.info(f"Processing ZIP archive containing {len(files_to_process)} files.")
+    # 3. Start the Celery task (Async)
+    # .delay() kicks off the task in the background and returns immediately
+    task = process_uploaded_file_task.delay(content, file.filename, file.content_type)
+    
+    # 4. Return the Ticket Number (Task ID)
+    return {"task_id": task.id, "message": "File uploaded. Processing started."}
 
-                for file_info in files_to_process:
-                    with z.open(file_info) as fhir_file:
-                        content_str = fhir_file.read().decode('utf-8')
-                        source_name = f"File: {file_info.filename}"
-
-                        # Handle NDJSON files from within the zip
-                        if file_info.filename.endswith('.ndjson'):
-                            logger.info(f"Processing NDJSON file from zip: {file_info.filename}")
-                            lines = content_str.strip().split("\n")
-                            for line_number, line in enumerate(lines):
-                                if not line.strip(): continue
-                                try:
-                                    fhir_data = json.loads(line.strip())
-                                    report = validation_service.validate_and_analyze(fhir_data)
-                                    final_reports.append({"resource": f"{source_name} -> Line {line_number + 1}", "issues": report})
-                                except json.JSONDecodeError as e:
-                                    logger.error(f"Invalid JSON in '{file_info.filename}' on line {line_number + 1}: {e.msg}")
-                                    final_reports.append({
-                                        "resource": f"{source_name} -> Line {line_number + 1}",
-                                        "issues": [{"id": 99, "title": "Invalid JSON Object", "explanation": f"Error: {e.msg}"}]
-                                    })
-                        # Handle regular JSON files from within the zip
-                        else:
-                            try:
-                                fhir_data = json.loads(content_str)
-                                final_reports.extend(process_fhir_resource(fhir_data, source_name))
-                            except json.JSONDecodeError as e:
-                                logger.error(f"Invalid JSON in ZIP file '{file_info.filename}': {e.msg}")
-                                final_reports.append({
-                                    "resource": source_name,
-                                    "issues": [{"id": 99, "title": "Invalid JSON in ZIP", "explanation": f"Error: {e.msg}"}]
-                                })
-            return {"reports": final_reports}
-        except Exception as e:
-            logger.critical(f"Failed to process ZIP file '{file.filename}': {e}", exc_info=True)
-            raise HTTPException(status_code=500, detail=f"Failed to process ZIP file: {e}")
+@router.get("/status/{task_id}")
+async def get_status(task_id: str):
+    """
+    Checks the status of a specific task.
+    """
+    task_result = AsyncResult(task_id)
+    
+    # CASE 1: Task is waiting in queue
+    if task_result.state == 'PENDING':
+        return {
+            "state": "PENDING", 
+            "current": 0, 
+            "total": 100, 
+            "status": "Pending in queue..."
+        }
+    
+    # CASE 2: Task is currently running (Reporting Progress)
+    elif task_result.state == 'PROGRESS':
+        return {
+            "state": "PROGRESS",
+            "current": task_result.info.get('current', 0),
+            "total": task_result.info.get('total', 100),
+            "status": task_result.info.get('status', "Processing...")
+        }
+    
+    # CASE 3: Task Finished Successfully
+    elif task_result.state == 'SUCCESS':
+        return {
+            "state": "SUCCESS",
+            "current": 100,
+            "total": 100, 
+            "status": "Complete",
+            "result": task_result.result
+        }
+    
+    # CASE 4: Task Crashed
     else:
-        # This logic for standalone files remains the same
-        content_bytes = await file.read()
-        content_str = content_bytes.decode("utf-8")
-        try:
-            fhir_data = json.loads(content_str)
-            final_reports.extend(process_fhir_resource(fhir_data, file.filename))
-            return {"reports": final_reports}
-        except json.JSONDecodeError:
-            logger.info("Processing as NDJSON (newline-delimited JSON).")
-            lines = content_str.strip().split("\n")
-            for line_number, line in enumerate(lines):
-                if not line.strip(): continue
-                try:
-                    fhir_data = json.loads(line.strip())
-                    report = validation_service.validate_and_analyze(fhir_data)
-                    final_reports.append({"resource": f"Line {line_number + 1}", "issues": report})
-                except json.JSONDecodeError as e:
-                    logger.error(f"Invalid JSON on line {line_number + 1}: {e.msg}")
-                    final_reports.append({
-                        "resource": f"Line {line_number + 1}",
-                        "issues": [{"id": 99, "title": "Invalid JSON Object", "explanation": f"Error: {e.msg}"}]
-                    })
-            return {"reports": final_reports}
-
+        return {
+            "state": task_result.state, 
+            "current": 100, 
+            "total": 100, 
+            "status": "Failed", 
+            "error": str(task_result.info)
+        }

@@ -1,0 +1,23 @@
+# Virtual Environment
+venv/
+env/
+
+# Python Garbage
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Logs
+*.log
+fhirguard.log
+
+# Large Files (>100MB)
+*.jar
+*.joblib
+comprehensive_model.joblib
+validator/validator-wrapper.jar
+
+# Temporary/Private Files
+file_tree.txt
+temp_uploads/
+generate_tree.py

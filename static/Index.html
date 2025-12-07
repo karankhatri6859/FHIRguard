@@ -3,238 +3,528 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>FHIRGuard Prototype</title>
-    <script src="https://cdn.tailwindcss.com"></script>
+    <title>FHIRGuard</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
-        body {
-            font-family: 'Inter', sans-serif;
-            background-color: #f3f4f6;
+        /* --- DARK MODE PALETTE --- */
+        :root {
+            --bg-body: #121212;       
+            --bg-container: #1e1e1e;  
+            --bg-card: #2c2c2c;       
+            --bg-input: #252525;
+            --text-main: #e0e0e0;     
+            --text-muted: #a0a0a0;    
+            --border: #444;
+            
+            /* Accents */
+            --accent-blue: #3498db;
+            --accent-green: #2ecc71;
+            --accent-red: #e74c3c;
+            --accent-yellow: #f1c40f;
         }
+
+        /* 1. Base Styles */
+        body { 
+            font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; 
+            background: var(--bg-body); 
+            color: var(--text-main); 
+            max-width: 1200px; 
+            margin: 0 auto; 
+            padding: 40px; 
+        }
+        
+        .container { 
+            background: var(--bg-container); 
+            padding: 40px; 
+            border-radius: 12px; 
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5); 
+            border: 1px solid #333;
+        }
+        
+        /* Header */
+        .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px; border-bottom: 1px solid var(--border); padding-bottom: 20px; }
+        h1 { color: var(--text-main); margin: 0; font-size: 2rem; letter-spacing: -1px; }
+        .subtitle { color: var(--text-muted); margin: 5px 0 0 0; font-weight: 300; }
+
+        /* 2. Upload Area */
+        .upload-area { 
+            border: 2px dashed var(--border); 
+            padding: 50px; 
+            text-align: center; 
+            margin-bottom: 20px; 
+            border-radius: 12px; 
+            cursor: pointer; 
+            transition: all 0.3s ease; 
+            background: var(--bg-input); 
+        }
+        .upload-area:hover { 
+            border-color: var(--accent-blue); 
+            background: #2a2a2a; 
+            transform: translateY(-2px); 
+        }
+        .upload-area.dragover { border-color: var(--accent-green); background: #2a3a2a; }
+        .upload-icon { font-size: 3rem; color: var(--accent-blue); margin-bottom: 15px; }
+        
+        button { 
+            background: var(--accent-blue); 
+            color: white; 
+            border: none; 
+            padding: 15px 30px; 
+            border-radius: 8px; 
+            font-size: 1.1rem; 
+            font-weight: 600; 
+            cursor: pointer; 
+            transition: 0.2s; 
+            width: 100%; 
+            box-shadow: 0 4px 6px rgba(0,0,0,0.3); 
+        }
+        button:hover { background: #2980b9; transform: translateY(-1px); }
+        button:disabled { background: #555; color: #888; cursor: not-allowed; transform: none; box-shadow: none; }
+
+        /* 3. Progress Bar */
+        #progress-container { display: none; margin-top: 30px; }
+        .progress-bg { width: 100%; background: #333; height: 12px; border-radius: 6px; overflow: hidden; }
+        .progress-fill { height: 100%; width: 0%; background: var(--accent-green); transition: width 0.4s ease; border-radius: 5px; }
+        #status-text { margin-top: 10px; font-size: 0.9rem; color: var(--text-muted); display: flex; justify-content: space-between; font-weight: 500; }
+
+        /* 4. Results Grid */
+        #results-area { display: none; margin-top: 40px; border-top: 1px solid var(--border); padding-top: 30px; animation: fadeIn 0.5s ease-out; }
+        
+        .dashboard-grid { display: grid; grid-template-columns: 2fr 1fr; gap: 30px; }
+        @media (max-width: 900px) { .dashboard-grid { grid-template-columns: 1fr; } }
+
+        .card { 
+            background: var(--bg-card); 
+            border: 1px solid #333; 
+            border-radius: 12px; 
+            padding: 25px; 
+            box-shadow: 0 4px 20px rgba(0,0,0,0.2); 
+        }
+        
+        /* --- NEW AI ACCORDION STYLES --- */
+        .ai-report { border-left: 5px solid var(--accent-blue); background: #1a2226; padding: 0; overflow: hidden; }
+        
+        .ai-header-main {
+            padding: 20px;
+            background: #151b1e;
+            border-bottom: 1px solid #333;
+        }
+
+        /* The Visible Section 1 */
+        .ai-visible-section {
+            padding: 20px;
+            color: #ccc;
+            line-height: 1.6;
+            font-size: 0.95rem;
+            border-bottom: 1px solid #333;
+        }
+
+        /* The Collapsible Sections */
+        details.ai-dropdown {
+            border-bottom: 1px solid #333;
+            transition: background 0.2s;
+        }
+        details.ai-dropdown:last-child { border-bottom: none; }
+        
+        details.ai-dropdown summary {
+            padding: 15px 20px;
+            cursor: pointer;
+            font-weight: 700;
+            font-size: 0.9rem;
+            color: var(--text-main);
+            background: #1f292e;
+            list-style: none; /* Hides default triangle */
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        details.ai-dropdown summary:hover {
+            background: #253036;
+        }
+        
+        /* Custom Arrow */
+        details.ai-dropdown summary::after {
+            content: '\f078'; /* FontAwesome Down Arrow */
+            font-family: "Font Awesome 5 Free"; 
+            font-weight: 900;
+            transition: transform 0.3s;
+        }
+        details.ai-dropdown[open] summary::after {
+            transform: rotate(180deg);
+        }
+
+        .ai-dropdown-content {
+            padding: 20px;
+            background: #1a2226;
+            color: #ccc;
+            line-height: 1.6;
+            font-size: 0.95rem;
+            border-top: 1px solid #2a363d;
+        }
+
+        /* Highlight Colors for Headers */
+        .header-red { color: var(--accent-red) !important; }
+        .header-green { color: var(--accent-green) !important; }
+        .header-yellow { color: var(--accent-yellow) !important; }
+
+        /* Metrics */
+        .metrics-row { display: flex; gap: 15px; margin-bottom: 20px; }
+        .metric { background: #252525; padding: 15px; border-radius: 8px; font-size: 0.85rem; color: var(--text-muted); border: 1px solid #333; flex: 1; text-align: center; }
+        .metric strong { display: block; font-size: 1.4rem; color: var(--text-main); margin-bottom: 5px; }
+
+        /* Charts */
+        .chart-container { height: 250px; position: relative; width: 100%; }
+
+        /* Issue Cards */
+        h3 { color: var(--text-main); margin-top: 40px; border-bottom: 1px solid var(--border); padding-bottom: 10px; }
+        
+        .issue-card { 
+            border-left: 5px solid #777; 
+            background: var(--bg-card); 
+            padding: 20px; 
+            margin-bottom: 15px; 
+            border-radius: 8px; 
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2); 
+            transition: transform 0.2s; 
+        }
+        .issue-card:hover { transform: translateX(5px); background: #333; }
+        
+        .sev-High { border-color: var(--accent-red); }
+        .sev-Medium { border-color: var(--accent-yellow); }
+        .sev-Low { border-color: var(--accent-green); }
+        
+        .issue-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+        .issue-title { font-weight: 700; color: var(--text-main); font-size: 1rem; }
+        .issue-tag { font-size: 0.75rem; padding: 4px 8px; border-radius: 4px; font-weight: 700; text-transform: uppercase; }
+        
+        .tag-ML { background: #1c2a35; color: var(--accent-blue); border: 1px solid var(--accent-blue); }
+        .tag-Rules { background: #332b1c; color: var(--accent-yellow); border: 1px solid var(--accent-yellow); }
+        .tag-Java { background: #351c1c; color: var(--accent-red); border: 1px solid var(--accent-red); }
+        
+        .issue-desc { color: #bbb; font-size: 0.95rem; }
+
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
     </style>
 </head>
-<body class="flex items-center justify-center min-h-screen p-4 md:p-8">
-    <div class="bg-white rounded-xl shadow-lg w-full max-w-4xl p-6 md:p-10 border border-gray-200">
-        <!-- Header -->
-        <div class="text-center mb-8">
-            <h1 class="text-3xl md:text-4xl font-bold text-gray-800">FHIRGuard</h1>
-            <p class="mt-2 text-gray-500">Self-Healing Clinical Data with Neuro-Symbolic AI</p>
-        </div>
+<body>
 
-        <!-- File Upload Section -->
-        <div class="flex flex-col items-center justify-center border-2 border-dashed border-blue-400 rounded-xl p-6 md:p-8 mb-8 bg-blue-50">
-            <svg class="w-12 h-12 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v7"></path>
-            </svg>
-            <p class="mt-4 text-gray-600">Drag and drop your FHIR JSON, NDJSON, or ZIP file here, or click to browse.</p>
-            <input type="file" id="fhirFileInput" class="hidden" accept=".json,.ndjson,.zip,application/zip">
-            <button id="uploadButton" class="mt-4 px-6 py-3 bg-blue-600 text-white font-semibold rounded-lg shadow-md hover:bg-blue-700 transition-colors">
-                Upload FHIR File
-            </button>
+<div class="container">
+    <div class="header">
+        <div>
+            <h1>FHIRGuard</h1>
+            <p class="subtitle">Next-Gen FHIR Validation & Anomaly Detection Platform</p>
         </div>
-
-        <!-- Loading Indicator -->
-        <div id="loadingIndicator" class="hidden text-center mb-6">
-            <div class="flex items-center justify-center space-x-2">
-                <div class="w-4 h-4 rounded-full animate-pulse bg-blue-600"></div>
-                <div class="w-4 h-4 rounded-full animate-pulse bg-blue-600"></div>
-                <div class="w-4 h-4 rounded-full animate-pulse bg-blue-600"></div>
-            </div>
-            <p class="mt-2 text-gray-500">Analyzing FHIR data...</p>
-        </div>
-        
-        <!-- Success Message -->
-        <div id="successMessage" class="hidden fixed inset-0 bg-gray-600 bg-opacity-50 items-center justify-center p-4">
-            <div class="bg-white rounded-xl shadow-2xl max-w-sm w-full p-6 text-center">
-                <p class="text-lg font-semibold text-green-600">Fix Approved (Simulated)!</p>
-                <p class="mt-2 text-gray-700">The data correction has been applied.</p>
-            </div>
-        </div>
-
-        <!-- Validation Results Section -->
-        <div id="resultsSection" class="hidden">
-            <h2 class="text-2xl font-semibold text-gray-800 mb-4">Validation Report</h2>
-            <div id="issueTableContainer" class="bg-gray-100 rounded-lg p-4 overflow-x-auto shadow-inner">
-                <table class="min-w-full divide-y divide-gray-200">
-                    <thead class="bg-gray-200">
-                        <tr>
-                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider">Issue</th>
-                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider">Type</th>
-                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider">Severity</th>
-                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider">Action</th>
-                        </tr>
-                    </thead>
-                    <tbody id="issueTableBody" class="bg-white divide-y divide-gray-200">
-                        <!-- Issue rows will be inserted here by JavaScript -->
-                    </tbody>
-                </table>
-            </div>
-        </div>
-
-        <!-- Modal for Detailed Explanation -->
-        <div id="explanationModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 hidden items-center justify-center p-4">
-            <div class="bg-white rounded-xl shadow-2xl max-w-lg w-full p-6 md:p-8 relative">
-                <button id="closeModalButton" class="absolute top-4 right-4 text-gray-400 hover:text-gray-600 transition-colors">
-                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
-                </button>
-                <h3 id="modalTitle" class="text-xl font-bold text-gray-800 mb-4">Detailed Explanation</h3>
-                <p id="modalExplanation" class="text-gray-700 leading-relaxed mb-6"></p>
-                <div id="repairSection" class="hidden">
-                    <h4 class="font-semibold text-gray-800 mb-2">Suggested Repair (JSON Patch)</h4>
-                    <pre id="repairCode" class="bg-gray-100 rounded-lg p-4 overflow-x-auto text-sm text-gray-800 font-mono"></pre>
-                    <div class="mt-4 flex space-x-2">
-                        <button id="approveRepair" class="px-4 py-2 bg-green-500 text-white text-sm font-semibold rounded-lg hover:bg-green-600 transition-colors">Approve Fix</button>
-                        <button id="rejectRepair" class="px-4 py-2 bg-red-500 text-white text-sm font-semibold rounded-lg hover:bg-red-600 transition-colors">Reject Fix</button>
-                    </div>
-                </div>
-            </div>
+        <div>
+            <span style="background: var(--bg-input); padding: 8px 16px; border-radius: 20px; font-size: 0.9rem; font-weight: 600; color: var(--accent-blue); border: 1px solid #333;">
+                <i class="fas fa-robot"></i> AI-Powered
+            </span>
         </div>
     </div>
 
-    <script>
-        // JavaScript for FHIRGuard Prototype
+    <div class="upload-area" id="drop-zone">
+        <div class="upload-icon"><i class="fas fa-cloud-upload-alt"></i></div>
+        <p style="font-size: 1.3rem; margin: 0 0 10px 0; font-weight: 600; color: var(--text-main);">Drag & Drop Patient Bundle</p>
+        <p style="color: #888; margin: 0;">.json, .ndjson, or .zip supported</p>
+        <input type="file" id="file-input" style="display: none">
+        <p id="filename-display" style="font-weight: 700; color: var(--accent-blue); margin-top: 20px;"></p>
+    </div>
+    
+    <button id="upload-btn" onclick="uploadFile()">Run Deep Analysis</button>
+
+    <div id="progress-container">
+        <div class="progress-bg">
+            <div id="progress-bar" class="progress-fill"></div>
+        </div>
+        <div id="status-text">
+            <span id="status-message">Initializing...</span>
+            <span id="status-percent">0%</span>
+        </div>
+    </div>
+
+    <div id="results-area"></div>
+</div>
+
+<script>
+    // --- DARK MODE CHART DEFAULTS ---
+    Chart.defaults.color = '#a0a0a0'; 
+    Chart.defaults.borderColor = '#444';
+
+    // --- UI Elements ---
+    const fileInput = document.getElementById('file-input');
+    const dropZone = document.getElementById('drop-zone');
+    const filenameDisplay = document.getElementById('filename-display');
+    const uploadBtn = document.getElementById('upload-btn');
+    const resultsArea = document.getElementById('results-area');
+    const progressContainer = document.getElementById('progress-container');
+    
+    // --- Drag & Drop Handlers ---
+    dropZone.addEventListener('click', () => fileInput.click());
+    
+    dropZone.addEventListener('dragover', (e) => { 
+        e.preventDefault(); 
+        dropZone.classList.add('dragover'); 
+    });
+
+    dropZone.addEventListener('dragleave', () => { 
+        dropZone.classList.remove('dragover'); 
+    });
+
+    dropZone.addEventListener('drop', (e) => {
+        e.preventDefault(); 
+        dropZone.classList.remove('dragover');
+        if (e.dataTransfer.files.length) { 
+            fileInput.files = e.dataTransfer.files; 
+            updateFilename(); 
+        }
+    });
+
+    fileInput.addEventListener('change', updateFilename);
+    
+    function updateFilename() { 
+        if (fileInput.files.length > 0) {
+            document.getElementById('filename-display').textContent = "Selected: " + fileInput.files[0].name; 
+        }
+    }
+
+    // --- Logic: Upload & Poll ---
+    async function uploadFile() {
+        if (fileInput.files.length === 0) return alert("Please select a file first!");
         
-        // --- DOM Elements ---
-        const uploadButton = document.getElementById('uploadButton');
-        const fhirFileInput = document.getElementById('fhirFileInput');
-        const loadingIndicator = document.getElementById('loadingIndicator');
-        const resultsSection = document.getElementById('resultsSection');
-        const issueTableBody = document.getElementById('issueTableBody');
-        const explanationModal = document.getElementById('explanationModal');
-        const closeModalButton = document.getElementById('closeModalButton');
-        const modalTitle = document.getElementById('modalTitle');
-        const modalExplanation = document.getElementById('modalExplanation');
-        const repairSection = document.getElementById('repairSection');
-        const repairCode = document.getElementById('repairCode');
-        const approveRepair = document.getElementById('approveRepair');
-        const rejectRepair = document.getElementById('rejectRepair');
-        const successMessage = document.getElementById('successMessage');
-        
-        // --- Event Listeners ---
-        uploadButton.addEventListener('click', () => fhirFileInput.click());
-        fhirFileInput.addEventListener('change', handleFileSelect);
-        closeModalButton.addEventListener('click', () => explanationModal.classList.add('hidden'));
+        resultsArea.style.display = 'none';
+        progressContainer.style.display = 'block';
+        updateProgress(0, "Uploading...");
+        uploadBtn.disabled = true;
 
-        // --- Core Functions ---
-        async function handleFileSelect(event) {
-            const file = event.target.files[0];
-            if (!file) return;
+        const formData = new FormData();
+        formData.append("file", fileInput.files[0]);
 
-            loadingIndicator.classList.remove('hidden');
-            resultsSection.classList.add('hidden');
-            issueTableBody.innerHTML = ''; // Clear previous results
+        try {
+            const res = await fetch('/upload', { method: 'POST', body: formData });
+            if (!res.ok) throw new Error("Upload failed: " + res.statusText);
+            const data = await res.json();
+            
+            if (data.task_id) pollStatus(data.task_id);
+            else throw new Error("No Task ID returned");
+        } catch (error) {
+            alert("System Error: " + error);
+            uploadBtn.disabled = false;
+            progressContainer.style.display = 'none';
+        }
+    }
 
+    function updateProgress(percent, msg) {
+        document.getElementById('progress-bar').style.width = percent + '%';
+        document.getElementById('status-message').textContent = msg;
+        document.getElementById('status-percent').textContent = percent + '%';
+    }
+
+    function pollStatus(taskId) {
+        const intervalId = setInterval(async () => {
             try {
-                const formData = new FormData();
-                formData.append("file", file);
+                const res = await fetch(`/status/${taskId}`);
+                const data = await res.json();
+                updateProgress(data.current || 0, data.status || "Processing...");
 
-                const response = await fetch("http://127.0.0.1:8000/validate-fhir", {
-                    method: "POST",
-                    body: formData,
-                });
-
-                if (!response.ok) {
-                    const errorData = await response.json();
-                    throw new Error(errorData.detail || "Server error");
+                if (data.state === 'SUCCESS') {
+                    clearInterval(intervalId);
+                    renderDashboard(data.result);
+                    uploadBtn.disabled = false;
+                } else if (data.state === 'FAILURE') {
+                    clearInterval(intervalId);
+                    document.getElementById('status-message').textContent = "Processing Failed";
+                    document.getElementById('status-message').style.color = "#e74c3c";
+                    alert("Worker Error: " + (data.error || "Unknown error"));
+                    uploadBtn.disabled = false;
                 }
+            } catch (e) { clearInterval(intervalId); console.error("Polling Error", e); }
+        }, 1000);
+    }
 
-                const data = await response.json();
-                
-                if (data && data.reports) {
-                    displayResults(data.reports);
-                } else {
-                    displayError("Validation Error", "The server returned an invalid report format.");
-                }
-            } catch (error) {
-                if (error instanceof TypeError && error.message.includes('Failed to fetch')) {
-                    displayError("Network Error", "Could not connect to the backend server. Please ensure the server is running on http://127.0.0.1:8000.");
-                } else {
-                    displayError("Processing Error", error.message);
-                }
-            } finally {
-                loadingIndicator.classList.add('hidden');
-            }
-        }
-
-        function displayResults(reports) {
-            resultsSection.classList.remove('hidden');
-            
-            const allIssues = reports.flatMap(report => report.issues);
-
-            if (allIssues.length === 0) {
-                const row = document.createElement('tr');
-                row.innerHTML = `<td colspan="4" class="px-6 py-4 text-center text-gray-500">No issues found. The data appears to be valid.</td>`;
-                issueTableBody.appendChild(row);
-                return;
-            }
-
-            allIssues.forEach(issue => {
-                const row = document.createElement('tr');
-                row.className = 'hover:bg-gray-50 transition-colors';
-                row.innerHTML = `
-                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">${issue.title}</td>
-                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${issue.type}</td>
-                    <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                        <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${getSeverityColor(issue.severity)}">
-                            ${issue.severity}
-                        </span>
-                    </td>
-                    <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                        <button class="text-blue-600 hover:text-blue-900 transition-colors" data-issue-id="${issue.id}">
-                            View Details
-                        </button>
-                    </td>
-                `;
-                issueTableBody.appendChild(row);
-                
-                // Add event listener to the View Details button
-                row.querySelector('button').addEventListener('click', () => showExplanation(issue));
-            });
-        }
+    // --- Dashboard Renderer ---
+    function renderDashboard(data) {
+        // 1. Parse AI Narrative into Sections
+        // The backend returns raw text with <br>. We need to split it back to process headers.
+        let rawAI = (data.summary.ai_narrative || "No narrative generated.").replace(/<br>/g, "\n");
         
-        function getSeverityColor(severity) {
-            switch (severity.toLowerCase()) {
-                case 'high': return 'bg-red-100 text-red-800';
-                case 'medium': return 'bg-yellow-100 text-yellow-800';
-                case 'low': return 'bg-gray-100 text-gray-800';
-                default: return 'bg-gray-100 text-gray-800';
-            }
-        }
+        // Define Sections based on emojis
+        const sections = [
+            { marker: "📖", title: "Patient Story & History", color: "#3498db", css: "" },
+            { marker: "🛑", title: "Clinical Handoff", color: "#e74c3c", css: "header-red" },
+            { marker: "💚", title: "Patient Explanation", color: "#2ecc71", css: "header-green" },
+            { marker: "💰", title: "Audit & Coding", color: "#f1c40f", css: "header-yellow" }
+        ];
 
-        function showExplanation(issue) {
-            modalTitle.textContent = issue.title;
-            modalExplanation.textContent = issue.explanation;
+        let aiHTML = "";
+        
+        // Strategy: Split by the emojis. 
+        // Note: The first part might be empty or introductory text.
+        // We assume standard ordering from prompt.
+        
+        // Helper to extract content between markers
+        let currentText = rawAI;
+        
+        sections.forEach((sec, index) => {
+            // Find start of this section
+            let startIndex = currentText.indexOf(sec.marker);
             
-            if (issue.isRepairable) {
-                repairSection.classList.remove('hidden');
-                repairCode.textContent = JSON.stringify(issue.repair, null, 2);
+            if (startIndex !== -1) {
+                // Find start of NEXT section (to know where this one ends)
+                let nextIndex = -1;
+                for(let i = index + 1; i < sections.length; i++) {
+                    let temp = currentText.indexOf(sections[i].marker);
+                    if(temp !== -1) { nextIndex = temp; break; }
+                }
                 
-                approveRepair.onclick = () => {
-                    console.log(`Fix for issue ID ${issue.id} approved.`);
-                    explanationModal.classList.add('hidden');
-                    successMessage.classList.remove('hidden');
-                    setTimeout(() => {
-                        successMessage.classList.add('hidden');
-                    }, 3000);
-                };
-                rejectRepair.onclick = () => {
-                    console.log(`Fix for issue ID ${issue.id} rejected.`);
-                    alert(`Fix for issue "${issue.title}" has been rejected (simulated).`);
-                    explanationModal.classList.add('hidden');
-                };
-            } else {
-                repairSection.classList.add('hidden');
+                let content = "";
+                if (nextIndex !== -1) {
+                    content = currentText.substring(startIndex, nextIndex);
+                } else {
+                    content = currentText.substring(startIndex); // Until end
+                }
+
+                // Clean up the header line from the content (e.g., "📖 SECTION 1...")
+                // We only want the body text
+                let lines = content.split('\n');
+                let headerLine = lines[0]; // Should contain the emoji
+                let bodyText = lines.slice(1).join('<br>'); 
+
+                // Render HTML
+                if (index === 0) {
+                    // Section 1: ALWAYS VISIBLE
+                    aiHTML += `
+                        <div class="ai-visible-section">
+                            <div style="font-weight:700; color:${sec.color}; margin-bottom:10px; text-transform:uppercase; letter-spacing:1px;">
+                                <i class="fas fa-book-open"></i> ${sec.title}
+                            </div>
+                            ${bodyText}
+                        </div>
+                    `;
+                } else {
+                    // Sections 2,3,4: DROPDOWNS
+                    let icon = "fa-list";
+                    if(sec.marker === "🛑") icon = "fa-user-md";
+                    if(sec.marker === "💚") icon = "fa-heart";
+                    if(sec.marker === "💰") icon = "fa-file-invoice-dollar";
+
+                    aiHTML += `
+                        <details class="ai-dropdown">
+                            <summary class="${sec.css}">
+                                <span><i class="fas ${icon}" style="width:20px"></i> ${sec.title}</span>
+                            </summary>
+                            <div class="ai-dropdown-content">${bodyText}</div>
+                        </details>
+                    `;
+                }
             }
-            
-            explanationModal.classList.remove('hidden');
+        });
+        
+        // Fallback if parsing fails (e.g. AI didn't use emojis)
+        if (aiHTML === "") {
+            aiHTML = `<div class="ai-visible-section">${rawAI.replace(/\n/g, "<br>")}</div>`;
         }
 
-        function displayError(title, message) {
-            loadingIndicator.classList.add('hidden');
-            resultsSection.classList.add('hidden');
-            // Use a custom modal or a simple message for errors
-            alert(`${title}:\n${message}`);
+        // 2. Metrics & Charts
+        let high = 0, med = 0, low = 0;
+        let resCounts = {};
+        
+        data.reports.forEach(r => {
+            r.issues.forEach(i => {
+                if(i.severity === 'High') high++; else if(i.severity === 'Medium') med++; else low++;
+                let type = r.resource.split('/')[0].replace(/Item \d+/, "Structure").split("(")[0].trim();
+                resCounts[type] = (resCounts[type] || 0) + 1;
+            });
+        });
+
+        // 3. Build Full HTML
+        let html = `
+            <div class="dashboard-grid">
+                <div class="card ai-report">
+                    <div class="ai-header-main">
+                        <div style="display:flex; justify-content:space-between; align-items:center;">
+                            <h2 style="color:var(--text-main); margin:0; font-size:1.3rem;">
+                                <i class="fas fa-brain" style="color:var(--accent-blue)"></i> Clinical Analysis
+                            </h2>
+                            <span style="font-size:0.85rem; color:var(--text-muted);">${data.summary.processing_time}</span>
+                        </div>
+                    </div>
+                    ${aiHTML}
+                </div>
+
+                <div style="display:flex; flex-direction:column; gap:20px;">
+                    <div class="card">
+                        <div class="metrics-row">
+                            <div class="metric"><strong>${data.summary.total_resources}</strong>Resources</div>
+                            <div class="metric"><strong>${high}</strong>Critical</div>
+                        </div>
+                        <div class="chart-container">
+                            <canvas id="sevChart"></canvas>
+                        </div>
+                        <div class="chart-container" style="height:200px; margin-top:20px; border-top:1px solid var(--border); padding-top:10px;">
+                            <canvas id="resChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <h3 style="margin-top:40px; color:var(--text-main); border-bottom:2px solid var(--border); padding-bottom:10px;">
+                <i class="fas fa-clipboard-list"></i> Detected Anomalies & Issues
+            </h3>
+        `;
+
+        if (data.reports.length === 0) {
+            html += `<div class="card" style="text-align:center; color:var(--accent-green);"><h3>✅ Clean File</h3><p>No validation errors or anomalies detected.</p></div>`;
         }
-    </script>
+
+        data.reports.forEach(r => {
+            r.issues.forEach(i => {
+                // Tags
+                let tag = "Java Validation"; let tagClass = "tag-Java";
+                const t = i.title || ""; const e = i.explanation || "";
+                if (t.includes("Anomaly") || t.includes("Outlier") || t.includes("Pattern")) { tag = "ML Brain"; tagClass = "tag-ML"; } 
+                else if (t.includes("NEWS2") || t.includes("Hypoxia") || t.includes("Pain") || t.includes("Glucose") || t.includes("Consciousness")) { tag = "Clinical Rule"; tagClass = "tag-Rules"; }
+
+                html += `
+                    <div class="issue-card sev-${i.severity || 'Low'}">
+                        <div class="issue-header">
+                            <span class="issue-title">${t}</span>
+                            <span class="issue-tag ${tagClass}">${tag}</span>
+                        </div>
+                        <div class="issue-desc">
+                            <strong style="color:var(--text-main);">${r.resource}:</strong> ${e}
+                        </div>
+                    </div>
+                `;
+            });
+        });
+
+        resultsArea.innerHTML = html;
+        resultsArea.style.display = 'block';
+
+        // 4. Charts
+        if (window.sevChartInstance) window.sevChartInstance.destroy();
+        if (window.resChartInstance) window.resChartInstance.destroy();
+
+        const sevCtx = document.getElementById('sevChart').getContext('2d');
+        window.sevChartInstance = new Chart(sevCtx, {
+            type: 'doughnut',
+            data: {
+                labels: ['Critical', 'Warning', 'Info'],
+                datasets: [{ data: [high, med, low], backgroundColor: ['#c0392b', '#f39c12', '#27ae60'], borderWidth: 0 }]
+            },
+            options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'right', labels: { color: '#a0a0a0' } } } }
+        });
+
+        const resCtx = document.getElementById('resChart').getContext('2d');
+        window.resChartInstance = new Chart(resCtx, {
+            type: 'bar',
+            data: {
+                labels: Object.keys(resCounts),
+                datasets: [{ label: 'Issues', data: Object.values(resCounts), backgroundColor: '#3498db', borderRadius: 4 }]
+            },
+            options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { grid: { color: '#333' }, ticks: { color: '#a0a0a0' }, beginAtZero: true }, x: { display: false } } }
+        });
+    }
+</script>
 </body>
 </html>
